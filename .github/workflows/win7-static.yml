@@ -24,9 +24,23 @@ jobs:
           }
           & "$env:VCPKG_ROOT\bootstrap-vcpkg.bat"
 
+      - name: Cache vcpkg binaries and downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}\vcpkg-bincache
+            ${{ env.VCPKG_ROOT }}\downloads
+          key: ${{ runner.os }}-vcpkg-opencv4-x64-windows-static-release-${{ hashFiles('.github/workflows/win7-static.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-opencv4-x64-windows-static-release-
+
       - name: Install OpenCV (static)
         shell: pwsh
         run: |
+          $cacheDir = "$env:GITHUB_WORKSPACE\vcpkg-bincache"
+          New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
+          $env:VCPKG_BINARY_SOURCES = "clear;files,$cacheDir,readwrite"
+          $env:VCPKG_BUILD_TYPE = "release"
           & "$env:VCPKG_ROOT\vcpkg.exe" install 'opencv4:x64-windows-static' --clean-after-build
 
       - name: Configure CMake
