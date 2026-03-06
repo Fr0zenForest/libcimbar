@@ -33,6 +33,14 @@ public:
 		glfwMakeContextCurrent(_w);
 		glfwSwapInterval(1);
 
+#ifdef _WIN32
+		if (glewInit() != GLEW_OK)
+		{
+			_good = false;
+			return;
+		}
+#endif
+
 		_display = std::make_shared<cimbar::gl_2d_display>(std::max(width, height));
 		glGenTextures(1, &_texid);
 		init_opengl(width, height);

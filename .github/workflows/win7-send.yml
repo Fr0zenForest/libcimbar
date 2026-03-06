@@ -45,6 +45,7 @@ jobs:
             --overlay-triplets="$env:GITHUB_WORKSPACE\vcpkg-triplets" `
             "opencv4:x64-windows-static-release" `
             "glfw3:x64-windows-static-release" `
+            "glew:x64-windows-static-release" `
             --clean-after-build
 
       - name: Configure CMake

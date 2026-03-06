@@ -109,6 +109,7 @@ if(DEFINED USE_WASM)
 
 else()  # if no wasm, ignore all that and add in GLFW libraries
 	target_link_libraries(cimbar_js
+		${GLEW_LIB}
 		${OPENGL_LIB}
 		${GLFW_LIB}
 	)
