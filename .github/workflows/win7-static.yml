@@ -27,7 +27,7 @@ jobs:
       - name: Install OpenCV (static)
         shell: pwsh
         run: |
-          & "$env:VCPKG_ROOT\vcpkg.exe" install 'opencv4[core,imgproc,imgcodecs]:x64-windows-static' --clean-after-build
+          & "$env:VCPKG_ROOT\vcpkg.exe" install 'opencv4:x64-windows-static' --clean-after-build
 
       - name: Configure CMake
         shell: pwsh
