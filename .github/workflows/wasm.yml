@@ -1,6 +1,7 @@
 name: wasm
 
-on: push
+on:
+  workflow_dispatch:
 
 jobs:
   test-cimbarjs:
@@ -59,4 +60,3 @@ jobs:
       - name: Run tests
         run: |
           (cd web/test/ && node run-in-browser.js)
-

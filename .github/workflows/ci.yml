@@ -1,6 +1,7 @@
 name: ci
 
-on: [push, pull_request]
+on:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -65,4 +66,3 @@ jobs:
 
     - name: run cppcheck
       run: cppcheck src/
-
