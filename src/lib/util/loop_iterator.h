@@ -21,7 +21,7 @@ public:
 		return _it;
 	}
 
-	auto operator*() const -> decltype(*_it)
+	decltype(auto) operator*() const
 	{
 		return *_it;
 	}
