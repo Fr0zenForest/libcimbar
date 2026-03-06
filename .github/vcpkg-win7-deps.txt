@@ -1,0 +1,7 @@
+# Win7 static build dependency descriptor for release cache
+# Changing this file invalidates the cache asset name used by workflows.
+triplet: x64-windows-static-release
+packages:
+  - opencv4:x64-windows-static-release
+  - glfw3:x64-windows-static-release
+  - glew:x64-windows-static-release

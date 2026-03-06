@@ -7,8 +7,12 @@ jobs:
   build-win7-send:
     runs-on: windows-2022
     timeout-minutes: 240
+    permissions:
+      contents: read
     env:
       VCPKG_ROOT: ${{ github.workspace }}\vcpkg
+      VCPKG_CACHE_RELEASE_TAG: vcpkg-cache-win7
+      VCPKG_CACHE_ASSET: vcpkg-win7-static-release-${{ hashFiles('.github/vcpkg-win7-deps.txt', 'vcpkg-triplets/x64-windows-static-release.cmake') }}.zip
 
     steps:
       - name: Checkout
@@ -30,9 +34,30 @@ jobs:
           path: |
             ${{ github.workspace }}\vcpkg-bincache
             ${{ env.VCPKG_ROOT }}\downloads
-          key: ${{ runner.os }}-vcpkg-win7-send-${{ hashFiles('.github/workflows/win7-send.yml', 'vcpkg-triplets/x64-windows-static-release.cmake') }}
+          key: ${{ runner.os }}-vcpkg-win7-send-${{ hashFiles('.github/workflows/win7-send.yml', '.github/vcpkg-win7-deps.txt', 'vcpkg-triplets/x64-windows-static-release.cmake') }}
           restore-keys: |
             ${{ runner.os }}-vcpkg-win7-send-
+
+      - name: Restore vcpkg cache from Release
+        id: restore_release_cache
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $cacheDir = "$env:GITHUB_WORKSPACE\vcpkg-bincache"
+          New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
+          $assetPath = Join-Path $env:RUNNER_TEMP $env:VCPKG_CACHE_ASSET
+          $hit = "false"
+
+          gh release view $env:VCPKG_CACHE_RELEASE_TAG -R $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release download $env:VCPKG_CACHE_RELEASE_TAG -R $env:GITHUB_REPOSITORY -p $env:VCPKG_CACHE_ASSET -D $env:RUNNER_TEMP *> $null
+            if ($LASTEXITCODE -eq 0) {
+              Expand-Archive -Path $assetPath -DestinationPath $cacheDir -Force
+              $hit = "true"
+            }
+          }
+          "release_cache_hit=$hit" >> $env:GITHUB_OUTPUT
 
       - name: Install OpenCV and GLFW (static, release-only)
         shell: pwsh
@@ -40,6 +65,7 @@ jobs:
           $cacheDir = "$env:GITHUB_WORKSPACE\vcpkg-bincache"
           New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
           $env:VCPKG_BINARY_SOURCES = "clear;files,$cacheDir,readwrite"
+          Write-Host "release cache hit: ${{ steps.restore_release_cache.outputs.release_cache_hit }}"
 
           & "$env:VCPKG_ROOT\vcpkg.exe" install `
             --overlay-triplets="$env:GITHUB_WORKSPACE\vcpkg-triplets" `

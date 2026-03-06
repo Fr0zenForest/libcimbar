@@ -1,0 +1,63 @@
+name: win7-vcpkg-release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-win7-vcpkg-release:
+    runs-on: windows-2022
+    timeout-minutes: 240
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}\vcpkg
+      VCPKG_CACHE_RELEASE_TAG: vcpkg-cache-win7
+      VCPKG_CACHE_ASSET: vcpkg-win7-static-release-${{ hashFiles('.github/vcpkg-win7-deps.txt', 'vcpkg-triplets/x64-windows-static-release.cmake') }}.zip
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Bootstrap vcpkg
+        shell: pwsh
+        run: |
+          if (!(Test-Path $env:VCPKG_ROOT)) {
+            git clone https://github.com/microsoft/vcpkg.git $env:VCPKG_ROOT
+          }
+          & "$env:VCPKG_ROOT\bootstrap-vcpkg.bat"
+
+      - name: Build dependency binary cache
+        shell: pwsh
+        run: |
+          $cacheDir = "$env:GITHUB_WORKSPACE\vcpkg-bincache"
+          New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
+          $env:VCPKG_BINARY_SOURCES = "clear;files,$cacheDir,readwrite"
+
+          & "$env:VCPKG_ROOT\vcpkg.exe" install `
+            --overlay-triplets="$env:GITHUB_WORKSPACE\vcpkg-triplets" `
+            "opencv4:x64-windows-static-release" `
+            "glfw3:x64-windows-static-release" `
+            "glew:x64-windows-static-release" `
+            --clean-after-build
+
+      - name: Package binary cache
+        shell: pwsh
+        run: |
+          $cacheDir = "$env:GITHUB_WORKSPACE\vcpkg-bincache"
+          if (!(Test-Path $cacheDir)) { throw "vcpkg cache dir not found: $cacheDir" }
+          New-Item -ItemType Directory -Path "$PWD\dist" -Force | Out-Null
+          $assetPath = "$PWD\dist\$env:VCPKG_CACHE_ASSET"
+          Compress-Archive -Path "$cacheDir\*" -DestinationPath $assetPath -Force
+          Get-FileHash $assetPath -Algorithm SHA256 | Format-List
+
+      - name: Publish cache asset to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.VCPKG_CACHE_RELEASE_TAG }}
+          name: ${{ env.VCPKG_CACHE_RELEASE_TAG }}
+          prerelease: true
+          files: dist/${{ env.VCPKG_CACHE_ASSET }}
+          overwrite_files: true
