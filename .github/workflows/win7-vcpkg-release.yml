@@ -13,7 +13,7 @@ jobs:
     env:
       VCPKG_ROOT: ${{ github.workspace }}\vcpkg
       VCPKG_CACHE_RELEASE_TAG: vcpkg-cache-win7
-      VCPKG_CACHE_ASSET: vcpkg-win7-static-release-${{ hashFiles('.github/vcpkg-win7-deps.txt', 'vcpkg-triplets/x64-windows-static-release.cmake') }}.zip
+      VCPKG_CACHE_ASSET: vcpkg-win7-static-release-cache-v1.zip
 
     steps:
       - name: Checkout
