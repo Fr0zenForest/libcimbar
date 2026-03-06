@@ -6,6 +6,7 @@
 #include "util/loop_iterator.h"
 
 #include "gl_headers.h"
+#include <iostream>
 #include <memory>
 
 namespace cimbar {
@@ -61,6 +62,9 @@ public:
 
 	void draw(GLuint texture)
 	{
+		if (!_p || !program())
+			return;
+
 		GLuint prog = program();
 		glUseProgram(prog);
 
@@ -105,7 +109,7 @@ public:
 
 	GLuint program() const
 	{
-		return *_p;
+		return _p ? static_cast<GLuint>(*_p) : 0;
 	}
 
 	void rotate(unsigned i=1)
@@ -125,6 +129,27 @@ public:
 	}
 
 protected:
+	static std::shared_ptr<cimbar::gl_program> create_program(const std::string& vertexSrc, const std::string& fragmentSrc)
+	{
+		GLuint vertexShader = cimbar::gl_shader(GL_VERTEX_SHADER, vertexSrc);
+		if (!vertexShader)
+			return nullptr;
+
+		GLuint fragmentShader = cimbar::gl_shader(GL_FRAGMENT_SHADER, fragmentSrc);
+		if (!fragmentShader)
+		{
+			glDeleteShader(vertexShader);
+			return nullptr;
+		}
+
+		auto program = std::make_shared<cimbar::gl_program>(vertexShader, fragmentShader, "vert");
+		glDeleteShader(vertexShader);
+		glDeleteShader(fragmentShader);
+		if (!static_cast<GLuint>(*program))
+			return nullptr;
+		return program;
+	}
+
 	static std::shared_ptr<cimbar::gl_program> create()
 	{
 		/* rotations
@@ -134,20 +159,20 @@ protected:
 		 * vec2 tl = vec2(1.0f - vert.x, 1.0f + vert.y);
 		 * vec2 tr = vec2(1.0f + vert.y, 1.0f + vert.x);
 		*/
-		static const std::string VERTEX_SHADER_SRC = R"(#version 300 es
+		static const std::string VERTEX_SHADER_SRC_ES300 = R"(#version 300 es
 		uniform mat2 rot;
 		uniform vec2 tform;
 		in vec4 vert;
 		out vec2 texCoord;
 		void main() {
-		   gl_Position = vec4(vert.x, vert.y, 0.0f, 1.0f);
+		   gl_Position = vec4(vert.x, vert.y, 0.0, 1.0);
 		   vec2 ori = vec2(vert.x, vert.y);
 		   ori *= rot;
-		   texCoord = vec2(1.0f - ori.x, 1.0f - ori.y) / 2.0;
+		   texCoord = vec2(1.0 - ori.x, 1.0 - ori.y) / 2.0;
 		   texCoord -= tform;
 		})";
 
-		static const std::string FRAGMENT_SHADER_SRC = R"(#version 300 es
+		static const std::string FRAGMENT_SHADER_SRC_ES300 = R"(#version 300 es
 		precision mediump float;
 		uniform sampler2D tex;
 		in vec2 texCoord;
@@ -156,9 +181,37 @@ protected:
 		   finalColor = texture(tex, texCoord);
 		})";
 
-		GLuint vertexShader = cimbar::gl_shader(GL_VERTEX_SHADER, VERTEX_SHADER_SRC);
-		GLuint fragmentShader = cimbar::gl_shader(GL_FRAGMENT_SHADER, FRAGMENT_SHADER_SRC);
-		return std::make_shared<cimbar::gl_program>(vertexShader, fragmentShader, "vert");
+		static const std::string VERTEX_SHADER_SRC_GL120 = R"(#version 120
+		uniform mat2 rot;
+		uniform vec2 tform;
+		attribute vec4 vert;
+		varying vec2 texCoord;
+		void main() {
+		   gl_Position = vec4(vert.x, vert.y, 0.0, 1.0);
+		   vec2 ori = vec2(vert.x, vert.y);
+		   ori *= rot;
+		   texCoord = vec2(1.0 - ori.x, 1.0 - ori.y) / 2.0;
+		   texCoord -= tform;
+		})";
+
+		static const std::string FRAGMENT_SHADER_SRC_GL120 = R"(#version 120
+		uniform sampler2D tex;
+		varying vec2 texCoord;
+		void main() {
+		   gl_FragColor = texture2D(tex, texCoord);
+		})";
+
+		auto program = create_program(VERTEX_SHADER_SRC_ES300, FRAGMENT_SHADER_SRC_ES300);
+		if (program)
+			return program;
+
+		std::cerr << "Falling back to GLSL 120 shader path" << std::endl;
+		program = create_program(VERTEX_SHADER_SRC_GL120, FRAGMENT_SHADER_SRC_GL120);
+		if (program)
+			return program;
+
+		std::cerr << "Failed to compile any supported shader variant" << std::endl;
+		return nullptr;
 	}
 
 protected:
