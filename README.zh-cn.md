@@ -71,6 +71,18 @@ make install
 
 要构建 `cimbar.js`（供`cimbar.org`使用)，请参阅 [WASM](WASM.md)。
 
+### Win7 x64 静态构建（无浏览器环境）
+
+仓库内新增了 GitHub Actions 工作流：`.github/workflows/win7-static.yml`。
+
+该工作流会：
+* 使用 `vcpkg` 构建静态 OpenCV（`x64-windows-static`）。
+* 以 `BUILD_DESKTOP_TOOLS=OFF` 只构建 CLI 工具（`cimbar.exe`、`cimbar_extract.exe`），不依赖浏览器/GLFW。
+* 打开 `WIN7_COMPAT=ON`（`_WIN32_WINNT=0x0601`）并启用 `STATIC_MSVC_RUNTIME=ON`（`/MT`）。
+* 产出制品 `cimbar-win7-x64-static.zip`。
+
+在 Actions 页面手动运行 `win7-static` 即可下载构建结果。
+
 ## 使用
 
 编码：

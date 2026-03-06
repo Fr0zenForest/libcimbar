@@ -22,9 +22,10 @@ target_link_libraries(cimbar_recv2
 	opencv_videoio
 )
 
-add_custom_command(
-	TARGET cimbar_recv2 POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:cimbar_recv2> cimbar_recv2.dbg
-	COMMAND ${CMAKE_STRIP} -g $<TARGET_FILE:cimbar_recv2>
-)
-
+if(CMAKE_STRIP AND NOT MSVC)
+	add_custom_command(
+		TARGET cimbar_recv2 POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:cimbar_recv2> cimbar_recv2.dbg
+		COMMAND ${CMAKE_STRIP} -g $<TARGET_FILE:cimbar_recv2>
+	)
+endif()

@@ -18,14 +18,15 @@ target_link_libraries(cimbar_extract
 	${OPENCV_LIBS}
 )
 
-add_custom_command(
-	TARGET cimbar_extract POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:cimbar_extract> cimbar_extract.dbg
-	COMMAND ${CMAKE_STRIP} -g $<TARGET_FILE:cimbar_extract>
-)
+if(CMAKE_STRIP AND NOT MSVC)
+	add_custom_command(
+		TARGET cimbar_extract POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:cimbar_extract> cimbar_extract.dbg
+		COMMAND ${CMAKE_STRIP} -g $<TARGET_FILE:cimbar_extract>
+	)
+endif()
 
 install(
 	TARGETS cimbar_extract
 	DESTINATION bin
 )
-

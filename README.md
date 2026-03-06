@@ -71,6 +71,18 @@ By default, libcimbar will try to install build products under `./dist/bin/`.
 
 To build cimbar.js (what cimbar.org uses), see [WASM](WASM.md).
 
+### Win7 x64 static build (no browser runtime)
+
+This repo now includes `.github/workflows/win7-static.yml`.
+
+It will:
+* build static OpenCV with `vcpkg` (`x64-windows-static`)
+* build CLI-only tools (`cimbar.exe`, `cimbar_extract.exe`) with `BUILD_DESKTOP_TOOLS=OFF` so no browser/GLFW is required
+* set `WIN7_COMPAT=ON` (`_WIN32_WINNT=0x0601`) and `STATIC_MSVC_RUNTIME=ON` (`/MT`)
+* upload `cimbar-win7-x64-static.zip` as an artifact
+
+Run the `win7-static` workflow manually in GitHub Actions to get the package.
+
 ## Usage
 
 Encode:

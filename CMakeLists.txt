@@ -3,6 +3,10 @@ cmake_minimum_required(VERSION 3.10)
 project ( libcimbar )
 enable_testing()
 
+option(BUILD_DESKTOP_TOOLS "Build OpenGL/GLFW desktop tools (cimbar_send/cimbar_recv)" ON)
+option(WIN7_COMPAT "Target Windows 7 API (_WIN32_WINNT=0x0601)" OFF)
+option(STATIC_MSVC_RUNTIME "Use static MSVC runtime (/MT, /MTd)" OFF)
+
 if (MSVC)
     add_compile_options(/FI "iso646.h")
 endif()
@@ -14,10 +18,27 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 add_definitions("-DLIBCIMBAR_PROJECT_ROOT=\"${libcimbar_SOURCE_DIR}\"")
 
-if("${CMAKE_BUILD_TYPE}" STREQUAL "")
+if(NOT CMAKE_CONFIGURATION_TYPES AND "${CMAKE_BUILD_TYPE}" STREQUAL "")
 	set(CMAKE_BUILD_TYPE "RelWithDebInfo")
-	set(CMAKE_C_FLAGS "${CFLAGS} -Wall -std=c99 -Os -fPIC")
-	set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-Wall -Wextra -Wpedantic -Wdeprecated -g -O2 -fPIC")
+endif()
+
+if(NOT MSVC)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -std=c99 -Os -fPIC")
+	set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -Wall -Wextra -Wpedantic -Wdeprecated -g -O2 -fPIC")
+endif()
+
+if(WIN32 AND WIN7_COMPAT)
+	add_compile_definitions(WINVER=0x0601 _WIN32_WINNT=0x0601)
+endif()
+
+if(MSVC AND STATIC_MSVC_RUNTIME)
+	foreach(flag_var
+		CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE CMAKE_C_FLAGS_RELWITHDEBINFO CMAKE_C_FLAGS_MINSIZEREL
+		CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_RELWITHDEBINFO CMAKE_CXX_FLAGS_MINSIZEREL
+	)
+		string(REPLACE "/MDd" "/MTd" ${flag_var} "${${flag_var}}")
+		string(REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+	endforeach()
 endif()
 
 if(DEFINED USE_WASM)  # wasm build needs OPENCV_DIR defined
@@ -47,7 +68,11 @@ if(DEFINED BUILD_PORTABLE_LINUX)
 endif()
 
 if(NOT DEFINED OPENCV_LIBS)
-	set(OPENCV_LIBS "opencv_calib3d" "opencv_imgcodecs" "opencv_imgproc" "opencv_photo" "opencv_core" ${OPENCV4_STATIC_LIBRARIES})
+	if(DEFINED OpenCV_LIBS AND NOT "${OpenCV_LIBS}" STREQUAL "")
+		set(OPENCV_LIBS ${OpenCV_LIBS})
+	else()
+		set(OPENCV_LIBS "opencv_calib3d" "opencv_imgcodecs" "opencv_imgproc" "opencv_photo" "opencv_core" ${OPENCV4_STATIC_LIBRARIES})
+	endif()
 endif()
 
 if(NOT DEFINED CPPFILESYSTEM)
@@ -62,12 +87,10 @@ set (PROJECTS
 	src/lib/bit_file
 	src/lib/chromatic_adaptation
 	src/lib/cimb_translator
-	src/lib/cimbar_js
 	src/lib/compression
 	src/lib/encoder
 	src/lib/extractor
 	src/lib/fountain
-	src/lib/gui
 	src/lib/image_hash
 	src/lib/serialize
 	src/lib/util
@@ -81,17 +104,33 @@ set (PROJECTS
 	src/third_party_lib/zstd
 )
 
+if(DEFINED USE_WASM OR BUILD_DESKTOP_TOOLS)
+set(PROJECTS
+	${PROJECTS}
+
+	src/lib/cimbar_js
+	src/lib/gui
+)
+endif()
+
 if(NOT DEFINED USE_WASM)
 set(PROJECTS
 	${PROJECTS}
 
 	src/exe/cimbar
 	src/exe/cimbar_extract
+	src/exe/build_image_assets
+)
+
+if(BUILD_DESKTOP_TOOLS)
+set(PROJECTS
+	${PROJECTS}
+
 	src/exe/cimbar_recv
 	src/exe/cimbar_recv2
 	src/exe/cimbar_send
-	src/exe/build_image_assets
 )
+endif()
 endif()
 
 include_directories(
@@ -102,5 +141,4 @@ include_directories(
 foreach(proj ${PROJECTS})
 	add_subdirectory(${proj} build/${proj})
 endforeach()
-
 
