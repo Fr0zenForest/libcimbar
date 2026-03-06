@@ -21,6 +21,16 @@ public:
 		return _it;
 	}
 
+	auto operator*() const -> decltype(*_it)
+	{
+		return *_it;
+	}
+
+	auto operator->() const
+	{
+		return &(*_it);
+	}
+
 	loop_iterator& operator++()
 	{
 		++_it;
