@@ -83,6 +83,14 @@ if(MSVC)
 	set(CPPFILESYSTEM "")
 endif()
 
+if(WIN32)
+	set(OPENGL_LIB "opengl32")
+	set(GLFW_LIB "glfw3")
+else()
+	set(OPENGL_LIB "GL")
+	set(GLFW_LIB "glfw")
+endif()
+
 set (PROJECTS
 	src/lib/bit_file
 	src/lib/chromatic_adaptation
@@ -141,4 +149,3 @@ include_directories(
 foreach(proj ${PROJECTS})
 	add_subdirectory(${proj} build/${proj})
 endforeach()
-

@@ -1,10 +1,10 @@
-name: win7-static
+name: win7-send
 
 on:
   workflow_dispatch:
 
 jobs:
-  build-win7-static:
+  build-win7-send:
     runs-on: windows-2022
     timeout-minutes: 240
     env:
@@ -30,19 +30,21 @@ jobs:
           path: |
             ${{ github.workspace }}\vcpkg-bincache
             ${{ env.VCPKG_ROOT }}\downloads
-          key: ${{ runner.os }}-vcpkg-opencv4-x64-windows-static-release-${{ hashFiles('.github/workflows/win7-static.yml', 'vcpkg-triplets/x64-windows-static-release.cmake') }}
+          key: ${{ runner.os }}-vcpkg-win7-send-${{ hashFiles('.github/workflows/win7-send.yml', 'vcpkg-triplets/x64-windows-static-release.cmake') }}
           restore-keys: |
-            ${{ runner.os }}-vcpkg-opencv4-x64-windows-static-release-
+            ${{ runner.os }}-vcpkg-win7-send-
 
-      - name: Install OpenCV (static)
+      - name: Install OpenCV and GLFW (static, release-only)
         shell: pwsh
         run: |
           $cacheDir = "$env:GITHUB_WORKSPACE\vcpkg-bincache"
           New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
           $env:VCPKG_BINARY_SOURCES = "clear;files,$cacheDir,readwrite"
+
           & "$env:VCPKG_ROOT\vcpkg.exe" install `
             --overlay-triplets="$env:GITHUB_WORKSPACE\vcpkg-triplets" `
             "opencv4:x64-windows-static-release" `
+            "glfw3:x64-windows-static-release" `
             --clean-after-build
 
       - name: Configure CMake
@@ -52,32 +54,32 @@ jobs:
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" `
             -DVCPKG_OVERLAY_TRIPLETS="$env:GITHUB_WORKSPACE\vcpkg-triplets" `
             -DVCPKG_TARGET_TRIPLET=x64-windows-static-release `
-            -DBUILD_DESKTOP_TOOLS=OFF `
+            -DBUILD_DESKTOP_TOOLS=ON `
             -DDISABLE_TESTS=ON `
             -DWIN7_COMPAT=ON `
             -DSTATIC_MSVC_RUNTIME=ON
 
-      - name: Build
+      - name: Build cimbar_send
         shell: pwsh
         run: |
-          cmake --build build --config Release --target cimbar cimbar_extract
+          cmake --build build --config Release --target cimbar_send
 
-      - name: Install and package
+      - name: Package cimbar_send
         shell: pwsh
         run: |
-          cmake --install build --config Release --prefix "$PWD\dist\win7-x64-static"
+          $sendExe = Get-ChildItem "$PWD\build" -Recurse -Filter cimbar_send.exe | Select-Object -First 1
+          if (-not $sendExe) { throw "cimbar_send.exe not found" }
 
-          $binDir = "$PWD\dist\win7-x64-static\bin"
-          if (!(Test-Path "$binDir\cimbar.exe")) { throw "cimbar.exe not found in $binDir" }
-          if (!(Test-Path "$binDir\cimbar_extract.exe")) { throw "cimbar_extract.exe not found in $binDir" }
+          $outDir = "$PWD\dist\win7-x64-send"
+          New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+          Copy-Item $sendExe.FullName "$outDir\cimbar_send.exe" -Force
 
-          Get-FileHash "$binDir\cimbar.exe" -Algorithm SHA256 | Format-List
-          Get-FileHash "$binDir\cimbar_extract.exe" -Algorithm SHA256 | Format-List
+          Get-FileHash "$outDir\cimbar_send.exe" -Algorithm SHA256 | Format-List
 
-          Compress-Archive -Path "$binDir\*" -DestinationPath "$PWD\dist\cimbar-win7-x64-static.zip" -Force
+          Compress-Archive -Path "$outDir\*" -DestinationPath "$PWD\dist\cimbar-send-win7-x64-static.zip" -Force
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: cimbar-win7-x64-static
-          path: dist/cimbar-win7-x64-static.zip
+          name: cimbar-send-win7-x64-static
+          path: dist/cimbar-send-win7-x64-static.zip
